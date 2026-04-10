@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal de Estudos | Hisashi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-slate-50 text-slate-900 antialiased">
+
+    <header class="bg-indigo-600 text-white shadow-md sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-6 md:py-10 text-center">
+            <h1 class="text-2xl md:text-4xl font-extrabold flex items-center justify-center gap-3">
+                <i class="fa-solid fa-graduation-cap"></i> Portal de Estudos
+            </h1>
+            <div class="mt-6 max-w-2xl mx-auto relative">
+                <input type="text" id="searchInput" placeholder="Pesquisar por matéria ou assunto..." 
+                    class="w-full px-5 py-3 rounded-xl text-slate-900 shadow-inner focus:ring-4 focus:ring-indigo-300 outline-none transition-all">
+                <i class="fa-solid fa-magnifying-glass absolute right-4 top-4 text-slate-400"></i>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-8">
+        <div id="filtros" class="flex flex-wrap gap-2 mb-8 justify-center">
+            </div>
+
+        <div id="fileGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+            </div>
+    </main>
+
+    <script>
+        // Usei os nomes EXATOS das suas pastas no GitHub (Case Sensitive!)
+        const materiais = [
+            // Física
+            { "nome": "Lista de exercicios MUV", "pasta": "Fisica" },
+            { "nome": "Lista de Forcas e aplicacoes", "pasta": "Fisica" },
+            { "nome": "Lista de Transmissao", "pasta": "Fisica" },
+            { "nome": "lista MCU", "pasta": "Fisica" },
+            { "nome": "Lista Vetores e Lancamentos", "pasta": "Fisica" },
+            // Literatura
+            { "nome": "ARTE natureza e função", "pasta": "Literatura" },
+            { "nome": "Atividade extra", "pasta": "Literatura" },
+            { "nome": "ATIVIDADE substutiva", "pasta": "Literatura" },
+            { "nome": "Barroco literatura seiscentista", "pasta": "Literatura" },
+            { "nome": "Camoes Sonetos", "pasta": "Literatura" },
+            { "nome": "Carta aberta do Rofatto de luciola", "pasta": "Literatura" },
+            { "nome": "Coletanea de contos", "pasta": "Literatura" },
+            { "nome": "Estrutura narrativa", "pasta": "Literatura" },
+            { "nome": "ex Barroco gabarito", "pasta": "Literatura" },
+            { "nome": "ex Barroco", "pasta": "Literatura" },
+            { "nome": "Exercícios teoria literária", "pasta": "Literatura" },
+            { "nome": "Figuras de Linguagem", "pasta": "Literatura" },
+            { "nome": "Figuras de Linguagem2", "pasta": "Literatura" },
+            { "nome": "generos Literarios", "pasta": "Literatura" },
+            { "nome": "Luciola", "pasta": "Literatura" },
+            { "nome": "mulher ao espelho", "pasta": "Literatura" },
+            { "nome": "Observacoes coletanea de contos", "pasta": "Literatura" },
+            { "nome": "Periodologia e tradicoes", "pasta": "Literatura" },
+            { "nome": "Prova barroco", "pasta": "Literatura" },
+            { "nome": "prova literatura", "pasta": "Literatura" },
+            { "nome": "Texto do Rofatto Barroco", "pasta": "Literatura" },
+            { "nome": "Versificacao", "pasta": "Literatura" },
+            // Matemática
+            { "nome": "APOSTILA FUNCOES", "pasta": "Matematica" },
+            { "nome": "APOSTILA TRIGONOMETRIA", "pasta": "Matematica" },
+            { "nome": "ATIVIDADE 2o Grau", "pasta": "Matematica" },
+            { "nome": "ATIVIDADE DE ESTUDO FUNCOES", "pasta": "Matematica" },
+            { "nome": "ATIVIDADE DE ESTUDO FUNCOES2", "pasta": "Matematica" },
+            { "nome": "ATIVIDADE DE ESTUDO FUNCOES3", "pasta": "Matematica" },
+            { "nome": "Ex Funcao Quadratica", "pasta": "Matematica" },
+            { "nome": "exTrigonometria", "pasta": "Matematica" },
+            { "nome": "Funcao do 2o Grau", "pasta": "Matematica" },
+            { "nome": "Funcao Exponencial", "pasta": "Matematica" },
+            { "nome": "Lista 3 trigonometria da circuferencia", "pasta": "Matematica" },
+            { "nome": "Lista de Exercicios Ciclo Trigonometrico", "pasta": "Matematica" },
+            { "nome": "LISTA DE EXERCICIOS CONJUNTOS", "pasta": "Matematica" },
+            { "nome": "LISTA DE RECUPERACAO FINAL", "pasta": "Matematica" },
+            { "nome": "LISTA MULTICONTEUDO", "pasta": "Matematica" },
+            // Português
+            { "nome": "Atividade circuito fechado", "pasta": "Português" },
+            { "nome": "atividade numeral artigo adjetivo", "pasta": "Português" },
+            { "nome": "ATIVIDADES SOBRE VARIACOES LINGUISTICAS", "pasta": "Português" },
+            { "nome": "Classes gramaticais1", "pasta": "Português" },
+            { "nome": "CONVENCOES DA ESCRITA", "pasta": "Português" },
+            { "nome": "ELEMENTOS DA COMUNICACAO", "pasta": "Português" },
+            { "nome": "ELEMENTOS ESTRUTURAIS DA PALAVRA", "pasta": "Português" },
+            { "nome": "Estudo pronome1", "pasta": "Português" },
+            { "nome": "Estudo pronome2", "pasta": "Português" },
+            { "nome": "Estudo pronome3", "pasta": "Português" },
+            { "nome": "EXERCICIOS FUNCOES DA LINGUAGEM", "pasta": "Português" },
+            { "nome": "EXERCICIOS SOBRE FORMACAO DE PALAVRAS", "pasta": "Português" },
+            { "nome": "EXERCICIOS SOBRE SEMANTICA", "pasta": "Português" },
+            { "nome": "FORMACAO DE PALAVRAS", "pasta": "Português" },
+            { "nome": "GENEROS TEXTUAIS", "pasta": "Português" },
+            { "nome": "pronome relativo", "pasta": "Português" },
+            { "nome": "Pronomes e o efeito de sentido no texto", "pasta": "Português" },
+            { "nome": "QUESTOES SOBRE TIPOS DE TEXTOS", "pasta": "Português" },
+            { "nome": "Relato proposta de redacao", "pasta": "Português" },
+            { "nome": "SEMANTICA", "pasta": "Português" },
+            { "nome": "Tabelas de pronomes1", "pasta": "Português" },
+            { "nome": "Tabelas de pronomes2", "pasta": "Português" },
+            { "nome": "Tabelas de pronomes3", "pasta": "Português" },
+            { "nome": "USO DOS PORQUES", "pasta": "Português" },
+            // Química
+            { "nome": "Inorganica", "pasta": "Quimica" },
+            { "nome": "ligacoes quimica", "pasta": "Quimica" },
+            { "nome": "lista geometria", "pasta": "Quimica" },
+            { "nome": "lista mol", "pasta": "Quimica" },
+            { "nome": "LISTA MOL2", "pasta": "Quimica" },
+            { "nome": "lista tabela periodica", "pasta": "Quimica" },
+            { "nome": "tabela periodica", "pasta": "Quimica" },
+            // Sociologia
+            { "nome": "Acao social Max Weber", "pasta": "sociologia"}
+        ];
+
+        const grid = document.getElementById('fileGrid');
+        const searchInput = document.getElementById('searchInput');
+
+        function render(data) {
+            if(data.length === 0) {
+                grid.innerHTML = '<p class="col-span-full text-center text-slate-400 py-10 text-lg">Nenhum material encontrado... 🔍</p>';
+                return;
+            }
+
+            grid.innerHTML = data.map(item => `
+                <div class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all flex flex-col justify-between h-full group">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="px-3 py-1 bg-indigo-50 text-indigo-600 text-[10px] font-bold uppercase rounded-full tracking-wider">
+                                ${item.pasta}
+                            </span>
+                            <i class="fa-solid ${item.icon} text-slate-300 group-hover:text-indigo-500 transition-colors"></i>
+                        </div>
+                        <h3 class="font-bold text-slate-800 text-lg leading-snug mb-4">${item.nome}</h3>
+                    </div>
+                    
+                    <a href="${item.pasta}/${item.nome}.pdf" target="_blank" 
+                       class="w-full bg-indigo-600 text-white text-center py-3 rounded-xl font-semibold hover:bg-blue-600 transition-colors flex items-center justify-center gap-2">
+                       <i class="fa-solid fa-file-pdf"></i> Abrir Material
+                    </a>
+                </div>
+            `).join('');
+        }
+
+        // Pesquisa Dinâmica
+        searchInput.addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            const filtered = materiais.filter(m => 
+                m.nome.toLowerCase().includes(term) || 
+                m.pasta.toLowerCase().includes(term)
+            );
+            render(filtered);
+        });
+
+        // Início
+        render(materiais);
+    </script>
+</body>
+</html>
+
+
+//materiais.jason
+[
+  { "nome": "Lista de exercicios MUV", "pasta": "Fisica" },
+  { "nome": "Lista de Forcas e aplicacoes", "pasta": "Fisica" },
+  { "nome": "Lista de Transmissao", "pasta": "Fisica" },
+  { "nome": "lista MCU", "pasta": "Fisica" },
+  { "nome": "Lista Vetores e Lancamentos", "pasta": "Fisica" },
+
+  { "nome": "ARTE natureza e função", "pasta": "Literatura" },
+  { "nome": "Atividade extra", "pasta": "Literatura" },
+  { "nome": "ATIVIDADE substutiva", "pasta": "Literatura" },
+  { "nome": "Barroco literatura seiscentista", "pasta": "Literatura" },
+  { "nome": "Camoes Sonetos", "pasta": "Literatura" },
+  { "nome": "Carta aberta do Rofatto de luciola", "pasta": "Literatura" },
+  { "nome": "Coletanea de contos", "pasta": "Literatura" },
+  { "nome": "Estrutura narrativa", "pasta": "Literatura" },
+  { "nome": "ex Barroco gabarito", "pasta": "Literatura" },
+  { "nome": "ex Barroco", "pasta": "Literatura" },
+  { "nome": "Exercícios teoria literária", "pasta": "Literatura" },
+  { "nome": "Figuras de Linguagem", "pasta": "Literatura" },
+  { "nome": "Figuras de Linguagem2", "pasta": "Literatura" },
+  { "nome": "generos Literarios", "pasta": "Literatura" },
+  { "nome": "Luciola", "pasta": "Literatura" },
+  { "nome": "mulher ao espelho", "pasta": "Literatura" },
+  { "nome": "Observacoes coletanea de contos", "pasta": "Literatura" },
+  { "nome": "Periodologia e tradicoes", "pasta": "Literatura" },
+  { "nome": "Prova barroco", "pasta": "Literatura" },
+  { "nome": "prova literatura", "pasta": "Literatura" },
+  { "nome": "Texto do Rofatto Barroco", "pasta": "Literatura" },
+  { "nome": "Versificacao", "pasta": "Literatura" },
+
+  { "nome": "APOSTILA FUNCOES", "pasta": "Matematica" },
+  { "nome": "APOSTILA TRIGONOMETRIA", "pasta": "Matematica" },
+  { "nome": "ATIVIDADE 2o Grau", "pasta": "Matematica" },
+  { "nome": "ATIVIDADE DE ESTUDO FUNCOES", "pasta": "Matematica" },
+  { "nome": "ATIVIDADE DE ESTUDO FUNCOES2", "pasta": "Matematica" },
+  { "nome": "ATIVIDADE DE ESTUDO FUNCOES3", "pasta": "Matematica" },
+  { "nome": "Ex Funcao Quadratica", "pasta": "Matematica" },
+  { "nome": "exTrigonometria", "pasta": "Matematica" },
+  { "nome": "Funcao do 2o Grau", "pasta": "Matematica" },
+  { "nome": "Funcao Exponencial", "pasta": "Matematica" },
+  { "nome": "Lista 3 trigonometria da circuferencia", "pasta": "Matematica" },
+  { "nome": "Lista de Exercicios Ciclo Trigonometrico", "pasta": "Matematica" },
+  { "nome": "LISTA DE EXERCICIOS CONJUNTOS", "pasta": "Matematica" },
+  { "nome": "LISTA DE RECUPERACAO FINAL", "pasta": "Matematica" },
+  { "nome": "LISTA MULTICONTEUDO", "pasta": "Matematica" },
+
+  { "nome": "Atividade circuito fechado", "pasta": "Português" },
+  { "nome": "atividade numeral artigo adjetivo", "pasta": "Português" },
+  { "nome": "ATIVIDADES SOBRE VARIACOES LINGUISTICAS", "pasta": "Português" },
+  { "nome": "Classes gramaticais1", "pasta": "Português" },
+  { "nome": "CONVENCOES DA ESCRITA", "pasta": "Português" },
+  { "nome": "ELEMENTOS DA COMUNICACAO", "pasta": "Português" },
+  { "nome": "ELEMENTOS ESTRUTURAIS DA PALAVRA", "pasta": "Português" },
+  { "nome": "Estudo pronome1", "pasta": "Português" },
+  { "nome": "Estudo pronome2", "pasta": "Português" },
+  { "nome": "Estudo pronome3", "pasta": "Português" },
+  { "nome": "EXERCICIOS FUNCOES DA LINGUAGEM", "pasta": "Português" },
+  { "nome": "EXERCICIOS SOBRE FORMACAO DE PALAVRAS", "pasta": "Português" },
+  { "nome": "EXERCICIOS SOBRE SEMANTICA", "pasta": "Português" },
+  { "nome": "FORMACAO DE PALAVRAS", "pasta": "Português" },
+  { "nome": "GENEROS TEXTUAIS", "pasta": "Português" },
+  { "nome": "pronome relativo", "pasta": "Português" },
+  { "nome": "Pronomes e o efeito de sentido no texto", "pasta": "Português" },
+  { "nome": "QUESTOES SOBRE TIPOS DE TEXTOS", "pasta": "Português" },
+  { "nome": "Relato proposta de redacao", "pasta": "Português" },
+  { "nome": "SEMANTICA", "pasta": "Português" },
+  { "nome": "Tabelas de pronomes1", "pasta": "Português" },
+  { "nome": "Tabelas de pronomes2", "pasta": "Português" },
+  { "nome": "Tabelas de pronomes3", "pasta": "Português" },
+  { "nome": "USO DOS PORQUES", "pasta": "Português" },
+  
+  { "nome": "Inorganica", "pasta": "Quimica" },
+  { "nome": "ligacoes quimica", "pasta": "Quimica" },
+  { "nome": "lista geometria", "pasta": "Quimica" },
+  { "nome": "lista mol", "pasta": "Quimica" },
+  { "nome": "LISTA MOL2", "pasta": "Quimica" },
+  { "nome": "lista tabela periodica", "pasta": "Quimica" },
+  { "nome": "tabela periodica", "pasta": "Quimica" },
+
+  { "nome": "Acao social Max Weber", "pasta": "sociologia"}
+]

@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minha Biblioteca Digital</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .card-arquivo { transition: all 0.2s ease; border-radius: 1.2rem; display: flex; flex-direction: column; justify-content: space-between; height: 100%; }
+        .card-concluido { border-color: #22c55e !important; background-color: #f0fdf4 !important; }
+        .fade-in { animation: fadeIn 0.3s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen antialiased text-slate-800">
+
+    <header class="bg-white border-b border-slate-200 p-6 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3 cursor-pointer" onclick="renderizarHome()">
+                <div class="bg-indigo-600 p-2 rounded-xl text-white shadow-lg shadow-indigo-100">
+                    <i class="fa-solid fa-graduation-cap text-xl"></i>
+                </div>
+                <h1 class="text-2xl font-black text-indigo-950 tracking-tighter uppercase">Biblioteca</h1>
+            </div>
+            <div id="status-global" class="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-4 py-2 rounded-full border border-indigo-100 uppercase tracking-widest">
+                0 de 0 concluídos
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-6 md:p-10">
+        
+        <div id="tela-home" class="fade-in">
+            <h2 class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-8">Selecione uma disciplina</h2>
+            <div id="grid-materias" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                </div>
+        </div>
+
+        <div id="tela-interna" class="hidden fade-in">
+            <div class="flex items-center justify-between mb-10">
+                <div class="flex items-center gap-4">
+                    <button onclick="voltar()" class="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center hover:bg-slate-50 transition-all shadow-sm text-slate-400">
+                        <i class="fa-solid fa-arrow-left"></i>
+                    </button>
+                    <h2 id="titulo-materia" class="text-3xl font-black text-indigo-950 uppercase tracking-tighter"></h2>
+                </div>
+            </div>
+            <div id="grid-conteudo" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                </div>
+        </div>
+
+    </main>
+
+    <script>
+        let dbMateriais = [];
+        let caminhoAtual = []; // Ex: ['APOSTILAS BERNOULLI', 'BIOLOGIA']
+        let concluidos = JSON.parse(localStorage.getItem('estudos_concluidos')) || [];
+        const tiposContaveis = ['prova', 'exercicio'];
+
+        async function carregarDados() {
+            try {
+                const response = await fetch('materiais.json');
+                dbMateriais = await response.json();
+                renderizarHome();
+                atualizarStatusGlobal();
+            } catch (e) {
+                console.error("Erro ao carregar materiais.json");
+            }
+        }
+
+        function renderizarHome() {
+            caminhoAtual = [];
+            document.getElementById('tela-home').classList.remove('hidden');
+            document.getElementById('tela-interna').classList.add('hidden');
+            const grid = document.getElementById('grid-materias');
+            grid.innerHTML = "";
+
+            const materias = [...new Set(dbMateriais.map(m => m.pasta.split('/')[0].trim()))].sort();
+
+            materias.forEach(m => {
+                const qtd = dbMateriais.filter(i => i.pasta.trim().startsWith(m)).length;
+                grid.innerHTML += `
+                    <div onclick="navegar('${m}')" class="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm hover:border-indigo-500 hover:shadow-md cursor-pointer transition-all group text-center">
+                        <div class="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center text-xl mb-4 mx-auto group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                            <i class="fa-solid fa-folder"></i>
+                        </div>
+                        <h3 class="font-black text-indigo-950 uppercase tracking-tight">${m}</h3>
+                        <p class="text-[10px] font-bold text-slate-400 mt-2 tracking-widest">${qtd} MATERIAIS</p>
+                    </div>`;
+            });
+        }
+
+        function navegar(pastaAlvo) {
+            caminhoAtual.push(pastaAlvo);
+            renderizarConteudo();
+        }
+
+        function voltar() {
+            caminhoAtual.pop();
+            if (caminhoAtual.length === 0) renderizarHome();
+            else renderizarConteudo();
+        }
+
+        function renderizarConteudo() {
+            document.getElementById('tela-home').classList.add('hidden');
+            document.getElementById('tela-interna').classList.remove('hidden');
+            
+            const currentPathStr = caminhoAtual.join('/').trim();
+            document.getElementById('titulo-materia').innerText = caminhoAtual[caminhoAtual.length - 1];
+
+            const grid = document.getElementById('grid-conteudo');
+            grid.innerHTML = "";
+
+            const itensFiltro = dbMateriais.filter(i => i.pasta.trim().startsWith(currentPathStr));
+            const subpastas = new Set();
+            const arquivosAqui = [];
+
+            itensFiltro.forEach(item => {
+                const partes = item.pasta.trim().split('/').map(p => p.trim());
+                if (partes.length > caminhoAtual.length) {
+                    subpastas.add(partes[caminhoAtual.length]);
+                } else {
+                    arquivosAqui.push(item);
+                }
+            });
+
+            // Renderizar Pastas (ex: BIOLOGIA)
+            subpastas.forEach(sub => {
+                grid.innerHTML += `
+                    <div onclick="navegar('${sub}')" class="bg-white p-6 border border-slate-200 rounded-[1.5rem] shadow-sm hover:border-indigo-500 cursor-pointer flex items-center gap-4 group transition-all">
+                        <div class="w-12 h-12 bg-amber-50 text-amber-500 rounded-xl flex items-center justify-center group-hover:bg-amber-500 group-hover:text-white transition-all">
+                            <i class="fa-solid fa-folder-closed"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-slate-700 uppercase text-xs">${sub}</h3>
+                            <p class="text-[9px] text-slate-400 font-bold tracking-widest">ABRIR PASTA</p>
+                        </div>
+                    </div>`;
+            });
+
+            // Renderizar Arquivos (ex: os 6 PDFs de Biologia)
+            arquivosAqui.forEach(arq => {
+                const idU = `${arq.pasta.trim()}-${arq.nome.trim()}`;
+                const isDone = concluidos.includes(idU);
+                const estilo = getEstiloTipo(arq.tipo);
+                const podeMarcar = tiposContaveis.includes(arq.tipo?.toLowerCase());
+                const idBtn = btoa(idU).replace(/=/g, '');
+
+                grid.innerHTML += `
+                    <div id="card-${idBtn}" class="card-arquivo bg-white p-6 border border-slate-100 shadow-sm ${isDone && podeMarcar ? 'card-concluido' : ''}">
+                        <div>
+                            <div class="flex justify-between items-start mb-4">
+                                <span class="text-[9px] font-black px-2 py-1 rounded ${estilo.bg} ${estilo.text} uppercase tracking-widest">${estilo.label}</span>
+                                ${podeMarcar ? `
+                                    <button onclick="marcar('${idU}', event)" id="btn-${idBtn}" 
+                                            class="w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${isDone ? 'bg-green-500 border-green-500 text-white shadow-lg shadow-green-100' : 'border-slate-200 bg-white text-transparent hover:border-green-400'}">
+                                        <i class="fa-solid fa-check text-[10px]"></i>
+                                    </button>
+                                ` : `<i class="fa-solid ${estilo.icon} text-slate-200"></i>`}
+                            </div>
+                            <h3 id="txt-${idBtn}" class="font-bold text-slate-700 text-sm leading-snug mb-8 h-10 overflow-hidden ${isDone && podeMarcar ? 'line-through opacity-40' : ''}">
+                                ${arq.nome}
+                            </h3>
+                        </div>
+                        <a href="${encodeURI(arq.pasta.trim() + '/' + arq.nome.trim() + '.' + arq.ext)}" target="_blank" 
+                           class="block w-full text-center py-3 bg-slate-50 text-slate-700 text-[10px] font-black rounded-xl hover:bg-indigo-600 hover:text-white transition-all uppercase tracking-widest">
+                            Visualizar
+                        </a>
+                    </div>`;
+            });
+        }
+
+        function getEstiloTipo(tipo) {
+            const t = tipo?.toLowerCase() || 'material';
+            if (t === 'prova') return { label: 'PROVA', bg: 'bg-red-50', text: 'text-red-500', icon: 'fa-file-circle-exclamation' };
+            if (t === 'exercicio') return { label: 'EXERCÍCIO', bg: 'bg-blue-50', text: 'text-blue-500', icon: 'fa-list-check' };
+            return { label: 'MATERIAL', bg: 'bg-slate-100', text: 'text-slate-500', icon: 'fa-file-pdf' };
+        }
+
+        function marcar(idU, e) {
+            e.stopPropagation();
+            const index = concluidos.indexOf(idU);
+            if (index === -1) concluidos.push(idU);
+            else concluidos.splice(index, 1);
+            localStorage.setItem('estudos_concluidos', JSON.stringify(concluidos));
+            renderizarConteudo();
+            atualizarStatusGlobal();
+        }
+
+        function atualizarStatusGlobal() {
+            const contaveis = dbMateriais.filter(i => tiposContaveis.includes(i.tipo?.toLowerCase())).length;
+            document.getElementById('status-global').innerText = `${concluidos.length} de ${contaveis} concluídos`;
+        }
+
+        carregarDados();
+    </script>
+</body>
+</html>

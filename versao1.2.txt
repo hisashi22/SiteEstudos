@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estudos Pro | Portal de Arquivos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .card-materia { transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; }
+        .card-materia:hover { transform: translateY(-5px); box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.1); }
+        .secao-arquivos { display: none; }
+        .secao-arquivos.ativa { display: block; }
+        .accordion-content { display: none; }
+        .accordion-content.aberto { display: block; }
+        .seta { transition: transform 0.2s; }
+        .seta-rodada { transform: rotate(180deg); }
+        
+        /* Card Especial ENEM */
+        .card-enem { background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); color: white; border: none; }
+        .card-enem h3 { color: white !important; }
+        .card-enem .icon-box { background: rgba(255,255,255,0.1) !important; color: #fbbf24 !important; }
+        .card-enem .prog-bg { background: rgba(255,255,255,0.2) !important; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen antialiased text-slate-800">
+
+    <header class="bg-indigo-950 text-white p-6 shadow-lg sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3 cursor-pointer" onclick="voltarHome()">
+                <i class="fa-solid fa-graduation-cap text-3xl text-indigo-400"></i>
+                <h1 class="text-2xl font-black tracking-tighter uppercase">Estudos Pro</h1>
+            </div>
+            <div class="relative w-full md:w-96">
+                <input type="text" id="campoBusca" placeholder="Pesquisar em tudo..." 
+                       class="w-full pl-10 pr-4 py-2 rounded-xl border-none text-slate-900 focus:ring-2 focus:ring-indigo-400 outline-none">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-sm"></i>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto p-6 md:p-10">
+        
+        <div id="grid-materias" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            </div>
+
+        <div id="detalhe-materia" class="mt-10 secao-arquivos">
+            <button onclick="voltarHome()" class="mb-6 flex items-center gap-2 text-indigo-600 font-bold hover:text-indigo-800 transition-colors">
+                <i class="fa-solid fa-arrow-left"></i> Voltar para matérias
+            </button>
+            <h2 id="titulo-materia-ativa" class="text-3xl font-black text-slate-800 uppercase mb-8 tracking-tighter border-l-8 border-indigo-600 pl-4"></h2>
+            
+            <div id="lista-accordions" class="space-y-4">
+                </div>
+        </div>
+
+    </main>
+
+    <script>
+        let dbMateriais = [];
+        let concluidos = JSON.parse(localStorage.getItem('estudos_concluidos')) || [];
+        const tiposContaveis = ['prova', 'exercicio'];
+
+        async function carregarDados() {
+            try {
+                const response = await fetch('materiais.json');
+                dbMateriais = await response.json();
+                renderizarHome();
+            } catch (e) { console.error("Erro ao carregar banco de dados."); }
+        }
+
+        function renderizarHome() {
+            const grid = document.getElementById('grid-materias');
+            grid.style.display = 'grid';
+            document.getElementById('detalhe-materia').classList.remove('ativa');
+            grid.innerHTML = "";
+
+            const materias = [...new Set(dbMateriais.map(m => m.pasta.split(' / ')[0]))].sort();
+
+            materias.forEach(m => {
+                const isEnem = m.toLowerCase().includes('enem');
+                const arquivosM = dbMateriais.filter(i => i.pasta.startsWith(m));
+                const contaveis = arquivosM.filter(i => tiposContaveis.includes(i.tipo?.toLowerCase()));
+                const feitos = contaveis.filter(i => concluidos.includes(gerarIdUnico(i))).length;
+                const progresso = contaveis.length ? Math.round((feitos / contaveis.length) * 100) : 0;
+
+                grid.innerHTML += `
+                    <div onclick="verMateria('${m}')" class="card-materia p-8 rounded-3xl shadow-sm border border-slate-200 flex flex-col items-center text-center ${isEnem ? 'card-enem' : 'bg-white'}">
+                        <div class="icon-box w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 mb-4 text-2xl transition-colors">
+                            <i class="fa-solid ${isEnem ? 'fa-medal' : 'fa-book'}"></i>
+                        </div>
+                        <h3 class="font-bold text-slate-800 uppercase tracking-tight mb-2">${m}</h3>
+                        <div class="w-full prog-bg bg-slate-100 h-2 rounded-full mt-4 overflow-hidden">
+                            <div class="bg-indigo-500 h-full transition-all duration-700" style="width: ${progresso}%"></div>
+                        </div>
+                        <span class="text-[10px] font-bold opacity-60 mt-2 uppercase tracking-widest">${progresso}% concluído</span>
+                    </div>`;
+            });
+        }
+
+        function verMateria(materiaNome) {
+            document.getElementById('grid-materias').style.display = 'none';
+            const detalhe = document.getElementById('detalhe-materia');
+            detalhe.classList.add('ativa');
+            document.getElementById('titulo-materia-ativa').innerText = materiaNome;
+
+            const listaAccordions = document.getElementById('lista-accordions');
+            listaAccordions.innerHTML = "";
+
+            const arquivosMateria = dbMateriais.filter(item => item.pasta.startsWith(materiaNome));
+            const subcategorias = [...new Set(arquivosMateria.map(item => item.pasta.split(' / ')[1] || "Geral"))].sort();
+
+            subcategorias.forEach(sub => {
+                const arquivosSub = arquivosMateria.filter(item => (item.pasta.split(' / ')[1] || "Geral") === sub);
+                const idSub = btoa(materiaNome + sub).replace(/=/g, '');
+
+                listaAccordions.innerHTML += `
+                    <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                        <button onclick="toggleAccordion('${idSub}')" class="w-full p-5 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                            <span class="font-bold text-slate-700">${sub}</span>
+                            <div class="flex items-center gap-4">
+                                <span class="text-[10px] font-bold bg-slate-100 text-slate-500 px-3 py-1 rounded-full uppercase">${arquivosSub.length} itens</span>
+                                <i id="seta-${idSub}" class="fa-solid fa-chevron-down text-slate-300 seta"></i>
+                            </div>
+                        </button>
+                        <div id="content-${idSub}" class="accordion-content border-t border-slate-50">
+                            ${arquivosSub.map(arq => {
+                                const idUnico = gerarIdUnico(arq);
+                                const isDone = concluidos.includes(idUnico);
+                                const podeCheck = tiposContaveis.includes(arq.tipo?.toLowerCase());
+                                const idLimpo = btoa(idUnico).replace(/=/g, '');
+                                return `
+                                    <div class="flex items-center justify-between p-4 px-8 border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors">
+                                        <div class="flex items-center gap-4">
+                                            ${podeCheck ? `
+                                                <button onclick="marcar('${idUnico}', event)" id="btn-${idLimpo}" class="w-5 h-5 rounded border flex items-center justify-center transition-all ${isDone ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300 bg-white text-transparent'}">
+                                                    <i class="fa-solid fa-check text-[8px]"></i>
+                                                </button>
+                                            ` : '<i class="fa-solid fa-file text-slate-200"></i>'}
+                                            <span id="txt-${idLimpo}" class="text-sm font-medium ${isDone && podeCheck ? 'line-through opacity-40 italic' : 'text-slate-600'}">${arq.nome}</span>
+                                        </div>
+                                        <a href="${encodeURI(arq.pasta + '/' + arq.nome + '.' + arq.ext)}" target="_blank" class="text-[10px] font-bold text-indigo-500 hover:text-indigo-700 uppercase">Abrir</a>
+                                    </div>`;
+                            }).join('')}
+                        </div>
+                    </div>`;
+            });
+        }
+
+        function toggleAccordion(id) {
+            const content = document.getElementById('content-' + id);
+            const seta = document.getElementById('seta-' + id);
+            content.classList.toggle('aberto');
+            seta.classList.toggle('seta-rodada');
+        }
+
+        function marcar(idUnico, e) {
+            e.stopPropagation();
+            const idLimpo = btoa(idUnico).replace(/=/g, '');
+            const btn = document.getElementById('btn-' + idLimpo);
+            const txt = document.getElementById('txt-' + idLimpo);
+            
+            const index = concluidos.indexOf(idUnico);
+            if (index === -1) {
+                concluidos.push(idUnico);
+                btn.className = "w-5 h-5 rounded border flex items-center justify-center transition-all bg-indigo-600 border-indigo-600 text-white";
+                txt.classList.add('line-through', 'opacity-40', 'italic');
+            } else {
+                concluidos.splice(index, 1);
+                btn.className = "w-5 h-5 rounded border border-slate-300 bg-white text-transparent flex items-center justify-center transition-all";
+                txt.classList.remove('line-through', 'opacity-40', 'italic');
+            }
+            localStorage.setItem('estudos_concluidos', JSON.stringify(concluidos));
+        }
+
+        function gerarIdUnico(item) { return `${item.pasta}-${item.nome}`; }
+        function voltarHome() { renderizarHome(); }
+
+        // Busca rápida
+        document.getElementById('campoBusca').addEventListener('input', (e) => {
+            const termo = e.target.value.toLowerCase();
+            if(termo === "") return renderizarHome();
+            
+            const filtrados = dbMateriais.filter(m => m.nome.toLowerCase().includes(termo));
+            // Na busca, mostramos o detalhe diretamente
+            document.getElementById('grid-materias').style.display = 'none';
+            document.getElementById('detalhe-materia').classList.add('ativa');
+            document.getElementById('titulo-materia-ativa').innerText = "Resultado da Busca";
+            
+            // Renderiza apenas uma lista simples de resultados
+            const lista = document.getElementById('lista-accordions');
+            lista.innerHTML = filtrados.map(arq => `
+                <div class="bg-white p-4 px-8 border border-slate-200 rounded-xl mb-2 flex items-center justify-between">
+                    <span class="text-sm font-medium text-slate-600">${arq.nome} <small class="text-indigo-400 ml-2">(${arq.pasta})</small></span>
+                    <a href="${encodeURI(arq.pasta + '/' + arq.nome + '.' + arq.ext)}" target="_blank" class="text-[10px] font-bold text-indigo-500 uppercase">Abrir</a>
+                </div>
+            `).join('');
+        });
+
+        carregarDados();
+    </script>
+</body>
+</html>
+
+json
+
+[
+  { "nome": "Lista de exercicios MUV", "pasta": "Fisica / Cinemática", "ext": "pdf", "tipo": "exercicio" },
+  { "nome": "lista MCU", "pasta": "Fisica / Cinemática", "ext": "pdf", "tipo": "exercicio" },
+  { "nome": "Lista Vetores e Lancamentos", "pasta": "Fisica / Cinemática", "ext": "pdf", "tipo": "prova" },
+  { "nome": "Lista de Forcas e aplicacoes", "pasta": "Fisica / Mecânica", "ext": "pdf", "tipo": "prova" },
+  { "nome": "Lista de Transmissao", "pasta": "Fisica / Mecânica", "ext": "pdf", "tipo": "exercicio" },
+
+  { "nome": "Barroco literatura seiscentista", "pasta": "Literatura / Barroco", "ext": "pdf", "tipo": "material" },
+  { "nome": "ex Barroco", "pasta": "Literatura / Barroco", "ext": "pdf", "tipo": "exercicio" },
+  { "nome": "ex Barroco gabarito", "pasta": "Literatura / Barroco", "ext": "pdf", "tipo": "material" },
+  { "nome": "Prova barroco", "pasta": "Literatura / Barroco", "ext": "pdf", "tipo": "prova" },
+  { "nome": "Texto do Rofatto Barroco", "pasta": "Literatura / Barroco", "ext": "pdf", "tipo": "material" },
+  { "nome": "Camoes Sonetos", "pasta": "Literatura / Clássicos", "ext": "pdf", "tipo": "material" },
+  { "nome": "Luciola", "pasta": "Literatura / Clássicos", "ext": "pdf", "tipo": "material" },
+  { "nome": "Carta aberta do Rofatto de luciola", "pasta": "Literatura / Clássicos", "ext": "pdf", "tipo": "material" },
+  { "nome": "ARTE natureza e função", "pasta": "Literatura / Teoria Literária", "ext": "pdf", "tipo": "material" },
+  { "nome": "Estrutura narrativa", "pasta": "Literatura / Teoria Literária", "ext": "pdf", "tipo": "material" },
+  { "nome": "Exercícios teoria literária", "pasta": "Literatura / Teoria Literária", "ext": "pdf", "tipo": "exercicio" },
+  { "nome": "Figuras de Linguagem", "pasta": "Literatura / Teoria Literária", "ext": "pdf", "tipo": "material" },
+  { "nome": "Figuras de Linguagem2", "pasta": "Literatura / Teoria Literária", "ext": "pdf", "tipo": "material" },
+  { "nome": "generos Literarios", "pasta": "Literatura / Teoria Literária", "ext": "pdf", "tipo": "material" },
+  { "nome": "Coletanea de contos", "pasta": "Literatura / Geral", "ext": "pdf", "tipo": "material" },
+  { "nome": "Observacoes coletanea de contos", "pasta": "Literatura / Geral", "ext": "pdf", "tipo": "material" },
+  { "nome": "Atividade extra", "pasta": "Literatura / Geral", "ext": "pdf", "tipo": "exercicio" },
+  { "nome": "ATIVIDADE substutiva", "pasta": "Literatura / Geral", "ext": "pdf", "tipo": "exercicio" },
+  { "nome": "prova literatura", "pasta": "Literatura / Geral", "ext": "pdf", "tipo": "prova" },
+  { "nome": "mulher ao espelho", "pasta": "Literatura / Geral", "ext": "pdf", "tipo": "material" },
+  { "nome": "Periodologia e tradicoes", "pasta": "Literatura / Geral", "ext": "pdf", "tipo": "material" },
+  { "nome": "Versificacao", "pasta": "Literatura / Geral", "ext": "pdf", "tipo": "material" },
+
+  { "nome": "APOSTILA FUNCOES", "pasta": "Matematica / Funções", "ext": "pdf", "tipo": "material" },
+  { "nome": "FUNCOES1", "pasta": "Matematica / Funções", "ext": "pdf", "tipo": "prova" },
+  { "nome": "FUNCOES2", "pasta": "Matematica / Funções", "ext": "pdf", "tipo": "prova" },
+  { "nome": "FUNCOES3", "pasta": "Matematica / Funções", "ext": "pdf", "tipo": "prova" },
+  { "nome": "Ex Funcao Quadratica", "pasta": "Matematica / Funções", "ext": "pdf", "tipo": "exercicio" },
+  { "nome": "Funcao do 2o Grau", "pasta": "Matematica / Funções", "ext": "pdf", "tipo": "material" },
+  { "nome": "ATIVIDADE 2o Grau", "pasta": "Matematica / Funções", "ext": "pdf", "tipo": "exercicio" },
+  { "nome": "Funcao Exponencial", "pasta": "Matematica / Funções", "ext": "pdf", "tipo": "material" },
+  { "nome": "APOSTILA TRIGONOMETRIA", "pasta": "Matematica / Trigonometria", "ext": "pdf", "tipo": "material" },
+  { "nome": "Trigonometria", "pasta": "Matematica / Trigonometria", "ext": "pdf", "tipo": "prova" },
+  { "nome": "Lista 3 trigonometria da circuferencia", "pasta": "Matematica / Trigonometria", "ext": "pdf", "tipo": "exercicio" },
+  { "nome": "Lista de Exercicios Ciclo Trigonometrico", "pasta": "Matematica / Trigonometria", "ext": "pdf", "tipo": "exercicio" },
+  { "nome": "LISTA DE EXERCICIOS CONJUNTOS", "pasta": "Matematica / Conjuntos", "ext": "pdf", "tipo": "exercicio" },
+  { "nome": "LISTA DE RECUPERACAO FINAL", "pasta": "Matematica / Geral", "ext": "pdf", "tipo": "exercicio" },
+  { "nome": "LISTA MULTICONTEUDO", "pasta": "Matematica / Geral", "ext": "pdf", "tipo": "material" },
+
+  { "nome": "Classes gramaticais1", "pasta": "Português / Gramática", "ext": "pdf", "tipo": "material" },
+  { "nome": "FORMACAO DE PALAVRAS", "pasta": "Português / Gramática", "ext": "pdf", "tipo": "material" },
+  { "nome": "EXERCICIOS SOBRE FORMACAO DE PALAVRAS", "pasta": "Português / Gramática", "ext": "pdf", "tipo": "exercicio" },
+  { "nome": "Estudo pronome1", "pasta": "Português / Gramática", "ext": "pdf", "tipo": "exercicio" },
+  { "nome": "Estudo pronome2", "pasta": "Português / Gramática", "ext": "pdf", "tipo": "exercicio" },
+  { "nome": "Estudo pronome3", "pasta": "Português / Gramática", "ext": "pdf", "tipo": "exercicio" },
+  { "nome": "Tabelas de pronomes1", "pasta": "Português / Gramática", "ext": "pdf", "tipo": "material" },
+  { "nome": "Tabelas de pronomes2", "pasta": "Português / Gramática", "ext": "pdf", "tipo": "material" },
+  { "nome": "Tabelas de pronomes3", "pasta": "Português / Gramática", "ext": "pdf", "tipo": "material" },
+  { "nome": "pronome relativo", "pasta": "Português / Gramática", "ext": "pdf", "tipo": "exercicio" },
+  { "nome": "Pronomes e o efeito de sentido no texto", "pasta": "Português / Gramática", "ext": "pdf", "tipo": "exercicio" },
+  { "nome": "USO DOS PORQUES", "pasta": "Português / Gramática", "ext": "pdf", "tipo": "exercicio" },
+  { "nome": "EXERCICIOS FUNCOES DA LINGUAGEM", "pasta": "Português / Comunicação", "ext": "pdf", "tipo": "exercicio" },
+  { "nome": "ELEMENTOS DA COMUNICACAO", "pasta": "Português / Comunicação", "ext": "pdf", "tipo": "material" },
+  { "nome": "ATIVIDADES SOBRE VARIACOES LINGUISTICAS", "pasta": "Português / Comunicação", "ext": "pdf", "tipo": "exercicio" },
+  { "nome": "SEMANTICA", "pasta": "Português / Semântica", "ext": "pdf", "tipo": "material" },
+  { "nome": "EXERCICIOS SOBRE SEMANTICA", "pasta": "Português / Semântica", "ext": "pdf", "tipo": "exercicio" },
+  { "nome": "GENEROS TEXTUAIS", "pasta": "Português / Texto", "ext": "pdf", "tipo": "material" },
+  { "nome": "QUESTOES SOBRE TIPOS DE TEXTOS", "pasta": "Português / Texto", "ext": "pdf", "tipo": "exercicio" },
+  { "nome": "Relato proposta de redacao", "pasta": "Português / Texto", "ext": "pdf", "tipo": "exercicio" },
+  { "nome": "Atividade circuito fechado", "pasta": "Português / Texto", "ext": "pdf", "tipo": "exercicio" },
+  { "nome": "CONVENCOES DA ESCRITA", "pasta": "Português / Texto", "ext": "pdf", "tipo": "material" },
+  { "nome": "ELEMENTOS ESTRUTURAIS DA PALAVRA", "pasta": "Português / Morfologia", "ext": "pdf", "tipo": "material" },
+  { "nome": "atividade numeral artigo adjetivo", "pasta": "Português / Classes Gramaticais", "ext": "pdf", "tipo": "exercicio" },
+
+
+  { "nome": "Inorganica", "pasta": "Quimica / Inorgânica", "ext": "pdf", "tipo": "prova" },
+  { "nome": "ligacoes quimica", "pasta": "Quimica / Ligações", "ext": "pdf", "tipo": "prova" },
+  { "nome": "lista geometria", "pasta": "Quimica / Geometria Molecular", "ext": "pdf", "tipo": "prova" },
+  { "nome": "lista mol", "pasta": "Quimica / Grandezas", "ext": "pdf", "tipo": "prova" },
+  { "nome": "LISTA MOL2", "pasta": "Quimica / Grandezas", "ext": "pdf", "tipo": "prova" },
+  { "nome": "lista tabela periodica", "pasta": "Quimica / Tabela Periódica", "ext": "pdf", "tipo": "prova" },
+  { "nome": "tabela periodica", "pasta": "Quimica / Tabela Periódica", "ext": "pdf", "tipo": "prova" },
+
+  { "nome": "Acao social Max Weber", "pasta": "Sociologia / Autores", "ext": "pdf", "tipo": "material" }
+]
